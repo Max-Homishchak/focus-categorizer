@@ -135,6 +135,8 @@ On the first run, a QR code will appear in the terminal. Scan it with your Teleg
 
 **Telegram > Settings > Devices > Link Desktop Device > scan the QR code**
 
+If you have **two-factor authentication** enabled, you'll be prompted to enter your Telegram cloud password after scanning the QR code.
+
 The session is cached in `tg_session.session` — subsequent runs skip this step.
 
 ### 7. Wait for processing

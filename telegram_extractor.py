@@ -37,7 +37,9 @@ class TelegramExtractor:
         )
 
     async def _authenticate(self) -> None:
+        import getpass
         import qrcode
+        from telethon.errors import SessionPasswordNeededError
 
         await self.client.connect()
         log.info("Connected: %s", self.client.is_connected())
@@ -62,6 +64,11 @@ class TelegramExtractor:
                 break
             except asyncio.TimeoutError:
                 log.warning("QR expired — generating a new one...")
+            except SessionPasswordNeededError:
+                log.info("Two-factor authentication detected.")
+                password = getpass.getpass("  Enter your Telegram 2FA password: ")
+                await self.client.sign_in(password=password)
+                break
 
         me = await self.client.get_me()
         log.info("Authorized as: %s (@%s)", me.first_name, me.username)
