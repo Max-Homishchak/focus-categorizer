@@ -1,0 +1,21 @@
+{
+  "categories": [
+    {
+      "name": "Developer",
+      "description": "People with programming or software engineering experience"
+    },
+    {
+      "name": "Business",
+      "description": "Entrepreneurs, founders, or people running their own business"
+    },
+    {
+      "name": "Uncategorized",
+      "description": "Does not clearly fit any other category above"
+    }
+  ],
+  "assignment_rules": [
+    "If a user fits multiple categories, choose the one that best matches their PRIMARY activity.",
+    "\"Uncategorized\" is a last resort — use only when there is truly no signal.",
+    "When in doubt, choose the more general category."
+  ]
+}

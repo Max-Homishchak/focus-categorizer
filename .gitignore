@@ -1,0 +1,11 @@
+.env
+*.session
+tg_session*
+passcodes
+output/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.claude/
+.idea/

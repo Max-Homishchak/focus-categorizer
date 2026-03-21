@@ -1,0 +1,28 @@
+Here is an example of the expected output format:
+
+Input:
+USER_ID: 12345
+NAME: @example_user (Олексій)
+TOTAL MESSAGES: 1
+MESSAGES:
+  [1] "Привіт! Мене звати XXX, 45 років, з Києва. Працюю DevOps інженером 5 років, зараз будую AI-агентів на Python. Маю канал про автоматизацію @devops_ai. Шукаю партнерів для стартапу."
+
+Expected output for this user:
+{
+  "user_id": 12345,
+  "category": "Developer",
+  "tags": ["devops engineer", "ai agents python", "automation channel", "startup search"],
+  "summary": "DevOps інженер з 5-річним досвідом з Києва, який зараз будує AI-агентів на Python. Має власний канал про автоматизацію і шукає партнерів для стартапу.",
+  "worth_checking": true,
+  "reasoning": "Має технічний досвід і активно розробляє AI-агентів, що чітко відповідає категорії Agentic AI.",
+  "user_metadata": {
+    "age": 45,
+    "city": "Київ",
+    "country": "Україна",
+    "profession": "DevOps Engineer",
+    "experience_years": 5,
+    "languages": ["Ukrainian"],
+    "links": ["@devops_ai"],
+    "contact_info": null
+  }
+}
