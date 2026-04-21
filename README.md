@@ -84,35 +84,38 @@ The server starts on `http://127.0.0.1:8787`. Open it in your browser.
 
 On the first visit the report page will be empty — no data yet.
 
-![Empty report on first launch](images/img.png)
+<img width="987" height="540" alt="image" src="https://github.com/user-attachments/assets/a703f665-ba08-42da-8745-7cf94c576be0" />
 
 ---
 
 ## Step 6 — Complete the setup wizard
 
-On the first visit, you will be redirected to the **Setup** page automatically.
+On the first visit, you should go the **Setup** page.
 
 ### Telegram credentials
 
 Fill in your API ID, API hash, phone number and the channel/group to analyze.
 
-![Telegram credentials in setup](images/img_1.png)
+<img width="594" height="469" alt="image" src="https://github.com/user-attachments/assets/a8423c88-df91-499f-82ca-49792b6bb4ae" />
+
 
 ### OpenAI credentials
 
 Enter your API key and choose models for categorization and reranking.
 
-![OpenAI setup section](images/img_2.png)
+<img width="602" height="391" alt="image" src="https://github.com/user-attachments/assets/e949914e-330e-4d8c-80e7-3a9e39f42c8f" />
+
 
 ### Advanced settings (optional)
 
 Expand **Show advanced options** to tune extraction limits, batch sizes, parallel workers and search thresholds.
 
-![Advanced settings](images/img_3.png)
+<img width="632" height="754" alt="image" src="https://github.com/user-attachments/assets/1c1689e4-9224-4a7e-855b-01aaa2cf898f" />
+
 
 Click **Save Settings**. You will be redirected to the main report page.
 
-> 💡 Secrets (API hash, API key) are stored locally in `data/settings.json`, which is gitignored. They are never sent anywhere except the respective APIs.
+> 💡 Secrets (API hash, API key) are ONLY stored locally in `data/settings.json`, which is gitignored. They are never sent/saved anywhere except the respective Telegram/OpenAI APIs.
 
 ---
 
@@ -122,7 +125,8 @@ Click the **Run categorization** button in the top-right corner of the report pa
 
 A confirmation dialog will appear — click **Run**.
 
-![Run confirmation modal](images/img_5.png)
+<img width="1284" height="689" alt="image" src="https://github.com/user-attachments/assets/1b783ed8-3f25-45c5-b300-00cf36ad06aa" />
+
 
 ### First run: Telegram authentication
 
@@ -130,11 +134,13 @@ Because this is the first run, the app needs to authenticate with Telegram.
 
 **Scan the QR code** — open Telegram on your phone → Settings → Devices → Link Desktop Device → scan the code.
 
-![Telegram QR code authentication](images/img_6.png)
+<img width="429" height="384" alt="image" src="https://github.com/user-attachments/assets/70506ad2-ce98-46d0-9ad1-3a453260222f" />
+
 
 **If you have 2FA enabled** — the modal switches to a password field automatically.
 
-![Telegram 2FA password entry](images/img_7.png)
+<img width="371" height="217" alt="image" src="https://github.com/user-attachments/assets/19908754-7db1-4f7d-b374-cda0b2c1fe2c" />
+
 
 The session is saved to `tg_session.session`. Subsequent runs skip authentication entirely.
 
@@ -149,7 +155,8 @@ The session is saved to `tg_session.session`. Subsequent runs skip authenticatio
 
 The header shows a live progress bar and phase label. You can also watch the terminal for detailed batch-by-batch logs.
 
-![Terminal logs during categorization](images/img_8.png)
+<img width="945" height="196" alt="image" src="https://github.com/user-attachments/assets/217f4234-7a72-4fb8-b711-0bc074858943" />
+
 
 The page reloads automatically when the run completes.
 
@@ -161,7 +168,7 @@ The page reloads automatically when the run completes.
 
 Once the run finishes, the report shows the full categorized community.
 
-![Completed report with 470 users](images/img_9.png)
+<img width="983" height="539" alt="image" src="https://github.com/user-attachments/assets/ea3a4e28-ba40-4fc7-a50b-a4806bcc391d" />
 
 The report includes:
 
@@ -184,7 +191,7 @@ Type a natural-language query, for example:
 
 The report filters to matching users instantly.
 
-![Semantic search results](images/img_10.png)
+<img width="980" height="542" alt="image" src="https://github.com/user-attachments/assets/533085fc-cc46-418d-b8a5-097dec70b283" />
 
 The search runs a two-stage pipeline:
 1. **Cosine similarity** retrieval — fast top-N candidates from the embedding index
@@ -198,7 +205,7 @@ Click **↺ Clear search filter** inside the panel to return to the full list.
 
 Click **Edit Prompt** in the report header to open the prompt editor.
 
-![Prompt editor with categories and assignment rules](images/img_4.png)
+<img width="987" height="533" alt="image" src="https://github.com/user-attachments/assets/0fc2cd4c-fb72-4eba-a288-a952b2b5e0de" />
 
 - **Categories table** — add, edit, or delete categories and their descriptions
 - **Assignment rules** — rules the LLM follows when deciding between categories
