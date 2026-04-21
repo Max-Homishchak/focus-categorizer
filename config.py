@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import List, Set
 
 from dotenv import load_dotenv
 
@@ -35,7 +35,6 @@ class FilterConfig:
     skip_user_ids: Set[int] = field(default_factory=lambda: _env_int_set("FILTER_SKIP_USER_IDS"))
     require_tags: Set[str] = field(default_factory=lambda: _env_set("FILTER_REQUIRE_TAGS"))
     only_worth_checking: bool = bool(os.getenv("FILTER_ONLY_WORTH_CHECKING", "").strip().lower() in ("1", "true", "yes"))
-
 
 @dataclass
 class Config:
