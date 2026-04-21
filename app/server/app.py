@@ -60,6 +60,7 @@ def create_app() -> FastAPI:
             report_service=report_service,
             pipeline_status=pipeline_status,
             auth_manager=auth_manager,
+            oai_client=oai_client,
         )
     )
     return app

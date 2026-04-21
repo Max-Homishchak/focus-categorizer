@@ -60,7 +60,8 @@ class TwoFAPayload(BaseModel):
 
 class PipelineStatus:
     def __init__(self) -> None:
-        self.state: str = "idle"
+        self.state: str = "idle"       # idle | running | done | error
+        self.phase: str = ""           # extracting | categorizing | indexing | exporting
         self.total: int = 0
         self.done: int = 0
         self.failed: int = 0
@@ -68,6 +69,7 @@ class PipelineStatus:
 
     def reset(self, total: int) -> None:
         self.state = "running"
+        self.phase = "categorizing"
         self.total = total
         self.done = 0
         self.failed = 0
@@ -81,9 +83,9 @@ class PipelineStatus:
     def to_dict(self) -> dict:
         return {
             "state": self.state,
+            "phase": self.phase,
             "total": self.total,
             "done": self.done,
-            "in_progress": self.total - self.done if self.state == "running" else 0,
             "failed": self.failed,
             "last_error": self.last_error,
         }
@@ -97,6 +99,7 @@ def make_router(
     report_service: ReportService,
     pipeline_status: PipelineStatus,
     auth_manager: TelegramAuthManager,
+    oai_client=None,
 ) -> APIRouter:
 
     r = APIRouter()
@@ -131,6 +134,12 @@ def make_router(
         settings.update(data)
         store.save_settings(settings)
         config.reload()
+        # Keep the shared AsyncOpenAI client in sync with the new key so that
+        # services started after a key change (e.g. .env deleted, key entered
+        # via wizard) don't keep hitting 401s with the old empty key.
+        if oai_client is not None and config.openai_api_key:
+            oai_client.api_key = config.openai_api_key
+            log.info("OpenAI client key updated.")
         log.info("Settings saved.")
         return {"ok": True}
 
@@ -212,6 +221,13 @@ def make_router(
 
         async def _run_pipeline(force: bool) -> None:
             try:
+                pipeline_status.state = "running"
+                pipeline_status.phase = "extracting"
+                pipeline_status.total = 0
+                pipeline_status.done = 0
+                pipeline_status.failed = 0
+                pipeline_status.last_error = None
+
                 extractor = TelegramExtractor(config, store)
                 await extractor.extract_messages()
 
@@ -223,12 +239,18 @@ def make_router(
                     force=force,
                 )
 
+                pipeline_status.phase = "indexing"
                 await search_service.ensure_index()
+
+                pipeline_status.phase = "exporting"
                 report_service.write_static_exports()
+
                 pipeline_status.state = "done"
+                pipeline_status.phase = ""
                 log.info("Pipeline complete.")
             except Exception as e:
                 pipeline_status.state = "error"
+                pipeline_status.phase = ""
                 pipeline_status.last_error = str(e)
                 log.exception("Pipeline error: %s", e)
 

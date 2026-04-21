@@ -330,7 +330,7 @@
           <div class="grid-2">
             <div class="field">
               <label>Users per LLM call</label>
-              <input type="number" name="users_per_batch" value="{{ settings.get('users_per_batch', 5) }}" min="1" max="20">
+              <input type="number" name="users_per_batch" value="{{ settings.get('users_per_batch', 5) }}" min="1">
             </div>
             <div class="field">
               <label>Messages per user in prompt</label>
@@ -342,7 +342,7 @@
             </div>
             <div class="field">
               <label>Parallel batch workers</label>
-              <input type="number" name="parallel_workers" value="{{ settings.get('parallel_workers', 5) }}" min="1" max="20">
+              <input type="number" name="parallel_workers" value="{{ settings.get('parallel_workers', 5) }}" min="1">
             </div>
           </div>
 
@@ -391,9 +391,16 @@
         'telegram_api_id', 'max_messages', 'min_messages_per_user', 'topic_id',
         'users_per_batch', 'max_messages_per_user', 'max_retries', 'parallel_workers', 'search_top_k',
       ];
-      intFields.forEach(k => { if (data[k] !== undefined) data[k] = parseInt(data[k], 10); });
-      if (data.search_confidence_threshold)
-        data.search_confidence_threshold = parseFloat(data.search_confidence_threshold);
+      intFields.forEach(k => {
+        if (data[k] !== undefined) {
+          const v = parseInt(data[k], 10);
+          if (!isNaN(v)) data[k] = v; // drop silently-excluded fields (NaN) rather than sending null
+        }
+      });
+      if (data.search_confidence_threshold) {
+        const v = parseFloat(data.search_confidence_threshold);
+        if (!isNaN(v)) data.search_confidence_threshold = v;
+      }
 
       try {
         const resp = await fetch('/api/setup', {
