@@ -3,6 +3,7 @@
 tg_session*
 passcodes
 output/
+data/
 __pycache__/
 *.pyc
 *.pyo

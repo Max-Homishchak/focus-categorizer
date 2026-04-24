@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Telegram Channel Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <style>
+    /* ── Design tokens ───────────────────────────────────────────────── */
+    :root {
+      --bg:             #f1f5f9;
+      --surface:        #ffffff;
+      --border:         #e2e8f0;
+      --text:           #0f172a;
+      --text-secondary: #475569;
+      --text-muted:     #94a3b8;
+      --primary:        #6366f1;
+      --primary-light:  #eef2ff;
+      --primary-dark:   #4f46e5;
+      --success:        #22c55e;
+      --warning:        #f59e0b;
+      --warning-light:  #fef3c7;
+      --warning-border: #fbbf24;
+      --danger:         #ef4444;
+      --radius:         12px;
+      --radius-sm:      8px;
+      --shadow:         0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:      0 4px 6px -1px rgba(0,0,0,.07), 0 2px 4px -2px rgba(0,0,0,.05);
+      --shadow-lg:      0 10px 25px -5px rgba(0,0,0,.1),  0 4px 10px -5px rgba(0,0,0,.04);
+      --t-fast:         150ms ease;
+      --t-base:         240ms ease;
+    }
+
+    /* ── Reset ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    .header {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      letter-spacing: -0.025em;
+    }
+    .header .subtitle {
+      color: rgba(255,255,255,.72);
+      font-size: 0.875rem;
+      margin-top: 4px;
+    }
+    .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+    .btn-header {
+      display: inline-block;
+      color: white;
+      font: 500 0.875rem/1 inherit;
+      text-decoration: none;
+      padding: 9px 16px;
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 8px;
+      background: rgba(255,255,255,.12);
+      cursor: pointer;
+    }
+    .btn-header:hover { background: rgba(255,255,255,.25); }
+
+    .btn-header-primary {
+      display: inline-block;
+      color: var(--primary-dark);
+      font: 700 0.875rem/1 inherit;
+      text-decoration: none;
+      padding: 9px 16px;
+      border: none;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+    }
+    .btn-header-primary:hover    { background: #e0e7ff; }
+    .btn-header-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+
+    /* ── Stats bar ───────────────────────────────────────────────────── */
+    .stats {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      padding: 20px 40px 0;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      box-shadow: var(--shadow-md);
+      text-align: center;
+      min-width: 120px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .stat-icon { font-size: 1.1rem; opacity: 0.55; line-height: 1; }
+    .stat-num  {
+      font-size: 1.9rem;
+      font-weight: 800;
+      color: var(--primary);
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .stat-lbl  {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    .container { padding: 0 40px 56px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Shared buttons ──────────────────────────────────────────────── */
+    .btn-primary {
+      padding: 9px 22px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background var(--t-fast);
+    }
+    .btn-primary:hover    { background: var(--primary-dark); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .btn-secondary {
+      padding: 9px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-family: inherit;
+      cursor: pointer;
+      background: var(--surface);
+      color: var(--text-secondary);
+      transition: border-color var(--t-fast), color var(--t-fast);
+    }
+    .btn-secondary:hover { border-color: var(--text-muted); color: var(--text); }
+
+    .btn-danger {
+      padding: 9px 20px;
+      background: var(--danger);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background var(--t-fast);
+    }
+    .btn-danger:hover { background: #dc2626; }
+
+    /* ── Filters ─────────────────────────────────────────────────────── */
+    .filters {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .filters-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .filters-header h2 { font-size: 0.9rem; font-weight: 700; }
+    .filters-count { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; }
+
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .filter-group { display: flex; flex-direction: column; gap: 4px; }
+    .filter-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .filter-group input,
+    .filter-group select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.12);
+    }
+    .filter-group input[type="text"] { width: 230px; }
+    .filter-group select { min-width: 155px; }
+
+    .filter-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: var(--text-secondary);
+      background: var(--surface);
+      user-select: none;
+      transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+    }
+    .filter-toggle:hover { border-color: var(--primary); color: var(--primary); }
+    .filter-toggle.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+
+    .btn-reset {
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.825rem;
+      font-family: inherit;
+      color: var(--text-secondary);
+      background: var(--surface);
+      cursor: pointer;
+      transition: border-color var(--t-fast), color var(--t-fast);
+    }
+    .btn-reset:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Search banner ───────────────────────────────────────────────── */
+    #searchBanner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: var(--primary-light);
+      border: 1px solid #c7d2fe;
+      border-radius: var(--radius-sm);
+      padding: 9px 14px;
+      margin-bottom: 16px;
+      font-size: 0.825rem;
+      color: var(--primary-dark);
+      font-weight: 500;
+    }
+    #searchBannerText { flex: 1; }
+    .banner-clear {
+      font-size: 0.78rem;
+      color: var(--primary);
+      background: none;
+      border: none;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      transition: color var(--t-fast);
+    }
+    .banner-clear:hover { color: var(--primary-dark); }
+
+    /* ── Chart ───────────────────────────────────────────────────────── */
+    .chart-section {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 20px;
+    }
+    .chart-section h2 { font-size: 0.9rem; font-weight: 700; margin-bottom: 16px; }
+    .chart-wrap { width: 100%; height: 260px; position: relative; }
+
+    /* ── Results header ──────────────────────────────────────────────── */
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .results-header h2 { font-size: 1.05rem; font-weight: 700; }
+
+    /* ── User cards ──────────────────────────────────────────────────── */
+    .user-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .user-card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      box-shadow: var(--shadow);
+      cursor: pointer;
+      transition: box-shadow var(--t-fast), border-color var(--t-fast);
+    }
+    .user-card:hover    { box-shadow: var(--shadow-md); border-color: #c7d2fe; }
+    .user-card.expanded { border-color: var(--primary); }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .card-name { font-weight: 700; font-size: 0.925rem; color: var(--text); }
+
+    .card-category {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+    .card-wc {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      background: var(--warning-light);
+      color: #92400e;
+      border: 1px solid var(--warning-border);
+    }
+    .card-msg-count { color: var(--text-muted); font-size: 0.75rem; font-weight: 500; }
+
+    .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-left: auto; }
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.68rem;
+      font-weight: 500;
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .card-summary {
+      margin-top: 7px;
+      font-size: 0.845rem;
+      color: var(--text-secondary);
+      line-height: 1.55;
+    }
+
+    /* Animated expand via grid-template-rows */
+    .card-details {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows var(--t-base);
+      overflow: hidden;
+    }
+    .user-card.expanded .card-details { grid-template-rows: 1fr; }
+    .card-details-inner {
+      min-height: 0;
+      padding-top: 14px;
+      margin-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 24px;
+      font-size: 0.82rem;
+      margin-bottom: 12px;
+    }
+    .detail-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .detail-value { color: var(--text); margin-top: 2px; }
+
+    .card-reasoning {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 12px;
+    }
+    .card-messages h4 {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 8px;
+    }
+    .msg {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 6px;
+      border-left: 3px solid var(--border);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── Empty state ─────────────────────────────────────────────────── */
+    .empty-state { text-align: center; padding: 56px 24px; color: var(--text-muted); }
+    .empty-state .icon { font-size: 2.8rem; margin-bottom: 14px; }
+    .empty-state p { font-size: 0.9rem; line-height: 1.65; }
+
+    /* ── Modal ───────────────────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,.45);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 480px;
+      width: calc(100% - 40px);
+      box-shadow: var(--shadow-lg);
+      animation: scaleIn var(--t-fast) ease;
+    }
+    @keyframes scaleIn {
+      from { transform: scale(.96); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+    .modal > p { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 22px; line-height: 1.55; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ── Prompt editor ───────────────────────────────────────────────── */
+    #promptPanel {
+      display: none;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 20px;
+      animation: slideDown var(--t-base) ease;
+    }
+    @keyframes slideDown {
+      from { transform: translateY(-6px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    #promptPanel h2 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; }
+    #promptPanel .section-title { font-size: 1rem; font-weight: 700; margin: 20px 0 12px; }
+
+    .table-wrap { overflow-x: auto; margin-bottom: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th {
+      text-align: left;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 8px 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    td input[type="text"],
+    td textarea {
+      width: 100%;
+      padding: 6px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.83rem;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    }
+    td input[type="text"]:focus,
+    td textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    }
+
+    .rules-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+    .rule-row { display: flex; gap: 8px; align-items: flex-start; }
+    .rule-row textarea {
+      flex: 1;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.83rem;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    }
+    .rule-row textarea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--text-muted);
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: background var(--t-fast), color var(--t-fast);
+    }
+    .btn-icon:hover { background: #fef2f2; color: var(--danger); }
+
+    .btn-add {
+      font-size: 0.825rem;
+      color: var(--primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 0;
+      font-weight: 600;
+      font-family: inherit;
+      transition: color var(--t-fast);
+    }
+    .btn-add:hover { color: var(--primary-dark); }
+
+    details.adv { margin-top: 18px; }
+    details.adv summary {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    details.adv summary::before       { content: "▶ "; font-size: 0.7rem; }
+    details.adv[open] summary::before { content: "▼ "; }
+
+    #sysPromptArea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.78rem;
+      min-height: 160px;
+      resize: vertical;
+      margin-top: 12px;
+      outline: none;
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    }
+    #sysPromptArea:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    }
+
+    .prompt-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+    /* ── Toast notifications ─────────────────────────────────────────── */
+    #toastContainer {
+      position: fixed;
+      bottom: 28px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 200;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity var(--t-base), transform var(--t-base);
+      pointer-events: auto;
+      white-space: nowrap;
+    }
+    .toast.show       { opacity: 1; transform: translateY(0); }
+    .toast-success    { background: #166534; color: white; }
+    .toast-error      { background: #991b1b; color: white; }
+    .toast-info       { background: var(--text); color: white; }
+
+    /* ── Chat widget ─────────────────────────────────────────────────── */
+    #chatFab {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      width: 54px;
+      height: 54px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 1.4rem;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(99,102,241,.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+      z-index: 50;
+    }
+    #chatFab:hover {
+      transform: scale(1.08);
+      background: var(--primary-dark);
+      box-shadow: 0 6px 24px rgba(99,102,241,.5);
+    }
+
+    #chatPanel {
+      display: none;
+      position: fixed;
+      bottom: 92px;
+      right: 28px;
+      width: 460px;
+      height: 600px;
+      background: var(--surface);
+      border-radius: 16px;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+      flex-direction: column;
+      z-index: 50;
+      overflow: hidden;
+    }
+    #chatPanel.open { display: flex; animation: scaleIn var(--t-fast) ease; }
+
+    .chat-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      flex-shrink: 0;
+    }
+    .chat-header-left { display: flex; align-items: center; gap: 10px; }
+    .chat-header-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+    }
+    .chat-header-title { font-weight: 700; font-size: 0.95rem; }
+    .chat-header-sub   { font-size: 0.72rem; color: rgba(255,255,255,.72); margin-top: 1px; }
+    .chat-close {
+      background: rgba(255,255,255,.15);
+      border: none;
+      cursor: pointer;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: background var(--t-fast);
+    }
+    .chat-close:hover { background: rgba(255,255,255,.28); }
+
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+    .chat-msg {
+      max-width: 84%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .chat-msg.user {
+      background: var(--primary);
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-msg.assistant {
+      background: #f1f5f9;
+      color: var(--text);
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+    }
+    .chat-msg.assistant.thinking { color: var(--text-muted); font-style: italic; }
+
+    .chat-suggestions {
+      padding: 0 16px 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .chat-chip {
+      padding: 5px 13px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: 1px solid #c7d2fe;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+    }
+    .chat-chip:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .chat-footer { border-top: 1px solid var(--border); flex-shrink: 0; }
+    .chat-input-row {
+      display: flex;
+      padding: 12px 14px;
+      gap: 8px;
+      align-items: center;
+    }
+    .chat-input-row input {
+      flex: 1;
+      padding: 9px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-family: inherit;
+      background: #fafafa;
+      outline: none;
+      transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
+    }
+    .chat-input-row input:focus {
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    }
+    .chat-send {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 9px 18px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background var(--t-fast);
+    }
+    .chat-send:hover    { background: var(--primary-dark); }
+    .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .chat-footer-bar {
+      padding: 2px 14px 10px;
+      display: flex;
+      justify-content: flex-end;
+      min-height: 28px;
+    }
+    .chat-reset {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      padding: 0;
+      transition: color var(--t-fast);
+    }
+    .chat-reset:hover { color: var(--primary); }
+
+    /* ── Auth modal ──────────────────────────────────────────────────── */
+    .auth-modal { max-width: 440px; }
+    .auth-modal .qr-wrap {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+    .auth-modal .qr-wrap svg { width: 180px; height: 180px; }
+    .auth-modal .qr-hint {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 8px;
+      line-height: 1.55;
+    }
+    .auth-modal .twofa-wrap { margin-top: 14px; }
+    .auth-modal .twofa-wrap label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .auth-modal .twofa-wrap input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      margin-top: 8px;
+      transition: border-color var(--t-fast), box-shadow var(--t-fast);
+    }
+    .auth-modal .twofa-wrap input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+    }
+    .auth-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+    .auth-status-dot.waiting { background: var(--warning); animation: pulse 1.4s ease infinite; }
+    .auth-status-dot.ok      { background: var(--success); }
+    .auth-status-dot.error   { background: var(--danger); }
+    @keyframes pulse { 0%,100%{ opacity:1 } 50%{ opacity:.35 } }
+    @keyframes indeterminate {
+      0%   { transform: translateX(-100%); width: 40%; }
+      50%  { width: 60%; }
+      100% { transform: translateX(280%); width: 40%; }
+    }
+    .progress-indeterminate #progressFill {
+      animation: indeterminate 1.4s ease-in-out infinite;
+      width: 40% !important;
+      transition: none !important;
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .header    { padding: 24px 20px 36px; }
+      .stats     { padding: 0 16px; margin-top: -20px; }
+      .container { padding: 0 16px 40px; }
+      .filter-row { flex-direction: column; align-items: stretch; }
+      .filter-group input[type="text"],
+      .filter-group select { width: 100%; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .card-tags   { margin-left: 0; margin-top: 8px; width: 100%; }
+      #chatPanel   { width: calc(100vw - 32px); right: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast container -->
+  <div id="toastContainer"></div>
+
+  <!-- Run confirmation modal -->
+  <div class="modal-overlay" id="runModal">
+    <div class="modal">
+      <h3>Start categorization run?</h3>
+      <p>This will extract messages from Telegram and categorize all new or updated users. Already-categorized users are skipped.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeRunModal()">Cancel</button>
+        <button class="btn-primary" onclick="doRun()">Run</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Telegram auth modal -->
+  <div class="modal-overlay" id="authModal">
+    <div class="modal auth-modal">
+      <h3>
+        <span class="auth-status-dot waiting" id="authDot"></span>
+        <span id="authTitle">Telegram Authentication</span>
+      </h3>
+      <div id="authQrWrap" class="qr-wrap" style="display:none"></div>
+      <p class="qr-hint" id="authHint">Starting authentication...</p>
+      <div class="twofa-wrap" id="twoFaWrap" style="display:none">
+        <label>2FA Password</label>
+        <input type="password" id="twoFaInput" placeholder="Enter your Telegram cloud password"
+          onkeydown="if(event.key==='Enter') submit2FA()">
+      </div>
+      <div class="modal-actions" style="margin-top:20px">
+        <button class="btn-secondary" onclick="closeAuthModal()">Cancel</button>
+        <button class="btn-primary" style="display:none" id="twoFaBtn" onclick="submit2FA()">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Prompt change confirmation modal -->
+  <div class="modal-overlay" id="promptModal">
+    <div class="modal">
+      <h3>Prompt changed — re-categorize?</h3>
+      <p id="promptModalBody">Changing the prompt will re-categorize all users and rebuild the search index. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="cancelPromptChange()">Cancel</button>
+        <button class="btn-danger" onclick="confirmPromptChange()">Confirm & Re-run</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>Telegram Channel Analysis</h1>
+      <p class="subtitle">Model: {{ model }} &middot; {{ total_users }} users &middot; {{ total_msgs }} messages</p>
+      <div id="progressWrap" style="display:none;margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span id="progressLabel" style="color:rgba(255,255,255,.9);font-size:0.8rem;font-weight:500;"></span>
+          <span id="progressPct" style="color:rgba(255,255,255,.7);font-size:0.75rem;font-weight:600;min-width:36px;text-align:right;"></span>
+        </div>
+        <div style="background:rgba(255,255,255,.2);border-radius:6px;height:8px;overflow:hidden;">
+          <div id="progressFill" style="height:100%;background:white;border-radius:6px;width:0%;transition:width .5s ease;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="/setup" class="btn-header">Settings</a>
+      <button class="btn-header" onclick="togglePromptEditor()">Edit Prompt</button>
+      <button class="btn-header-primary" id="runBtn" onclick="startRun()">Run categorization</button>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-num">{{ total_users }}</div>
+      <div class="stat-lbl">Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💬</div>
+      <div class="stat-num">{{ total_msgs }}</div>
+      <div class="stat-lbl">Messages</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🗂</div>
+      <div class="stat-num">{{ categories_list | length }}</div>
+      <div class="stat-lbl">Categories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⭐</div>
+      <div class="stat-num">{{ total_wc }}</div>
+      <div class="stat-lbl">Worth Checking</div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Prompt editor panel -->
+    <div id="promptPanel">
+      <h2>Edit Prompt</h2>
+      <div class="table-wrap">
+        <table id="catTable">
+          <thead>
+            <tr><th>#</th><th>Name</th><th>Description</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="catBody"></tbody>
+        </table>
+      </div>
+      <button class="btn-add" onclick="addCategory()">+ Add category</button>
+
+      <h2 class="section-title">Assignment Rules</h2>
+      <div class="rules-list" id="rulesList"></div>
+      <button class="btn-add" onclick="addRule()">+ Add rule</button>
+
+      <details class="adv">
+        <summary>System prompt template (advanced)</summary>
+        <textarea id="sysPromptArea"></textarea>
+      </details>
+
+      <div class="prompt-actions">
+        <button class="btn-primary" onclick="savePrompt()">Save Prompt</button>
+        <button class="btn-secondary" onclick="togglePromptEditor()">Close</button>
+      </div>
+    </div>
+
+    <!-- Search banner -->
+    <div id="searchBanner">
+      <span id="searchBannerText"></span>
+      <button class="banner-clear" onclick="resetSearch()">Clear filter ✕</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filters-header">
+        <h2>Filters</h2>
+        <span class="filters-count" id="filterCount">Showing {{ total_users }} of {{ total_users }} users</span>
+      </div>
+      <div class="filter-row">
+        <div class="filter-group">
+          <label class="filter-label">Search</label>
+          <input type="text" id="searchInput" placeholder="Name, tag, summary...">
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select id="categoryFilter">
+            <option value="">All categories</option>
+            {% for c in categories_list %}
+            <option value="{{ c }}">{{ c }} ({{ category_counts[c] }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Tag</label>
+          <select id="tagFilter">
+            <option value="">All tags</option>
+            {% for t in all_tags %}
+            <option value="{{ t }}">{{ t }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="filter-toggle" id="wcToggle" onclick="toggleWC()">Worth Checking only</button>
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="chart-section">
+      <h2>Category Distribution</h2>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results-header">
+      <h2>Users</h2>
+    </div>
+    <div class="user-list" id="userList"></div>
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="icon">🔍</div>
+      <p>No users match the current filters.<br>Try adjusting your search criteria.</p>
+    </div>
+
+  </div>
+
+  <!-- Chat FAB -->
+  <button id="chatFab" onclick="toggleChat()" title="Search community">🔍</button>
+
+  <!-- Chat panel -->
+  <div id="chatPanel">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-header-icon">🔍</div>
+        <div>
+          <div class="chat-header-title">Search community</div>
+          <div class="chat-header-sub">Find people by skills, role, location&hellip;</div>
+        </div>
+      </div>
+      <button class="chat-close" onclick="toggleChat()">&#x2715;</button>
+    </div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="chat-msg assistant">Ask me to find people by skills, interests, location, or any other criteria.</div>
+    </div>
+    <div class="chat-suggestions" id="chatSuggestions">
+      <button class="chat-chip" onclick="useChip(this)">Agentic AI developers</button>
+      <button class="chat-chip" onclick="useChip(this)">Traders with proven results</button>
+      <button class="chat-chip" onclick="useChip(this)">Worth checking</button>
+    </div>
+    <div class="chat-footer">
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="e.g. Python developers in Kyiv..."
+          onkeydown="if(event.key==='Enter') sendSearch()">
+        <button class="chat-send" id="chatSend" onclick="sendSearch()">Send &#10148;</button>
+      </div>
+      <div class="chat-footer-bar">
+        <button class="chat-reset" id="chatResetBtn" onclick="resetSearch()" style="display:none">&#x21BA; Clear search filter</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Data ──────────────────────────────────────────────────────────
+    const ALL_USERS = {{ users_json | safe }};
+    const COLORS    = {{ chart_colors | safe }};
+
+    // ── State ─────────────────────────────────────────────────────────
+    let filterSearch   = '';
+    let filterCategory = '';
+    let filterTag      = '';
+    let filterWC       = false;
+    let searchFilterIds     = null;   // null = inactive, Array = active
+    let _pendingPromptPayload = null;
+    let _pollInterval         = null;
+
+    // ── DOM refs ──────────────────────────────────────────────────────
+    const searchInput    = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const tagFilter      = document.getElementById('tagFilter');
+    const wcToggle       = document.getElementById('wcToggle');
+    const userListEl     = document.getElementById('userList');
+    const emptyState     = document.getElementById('emptyState');
+    const filterCountEl  = document.getElementById('filterCount');
+    const searchBanner   = document.getElementById('searchBanner');
+
+    // ── Toast ─────────────────────────────────────────────────────────
+    function toast(msg, type = 'info') {
+      const el = document.createElement('div');
+      el.className = `toast toast-${type}`;
+      el.textContent = msg;
+      document.getElementById('toastContainer').appendChild(el);
+      // Double rAF ensures the element is painted before the transition fires
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+      setTimeout(() => {
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }, 3500);
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    function truncate(s, n) {
+      return s.length > n ? s.slice(0, n) + '…' : s;
+    }
+
+    // ── Filtering ─────────────────────────────────────────────────────
+    function getFiltered() {
+      let users = ALL_USERS;
+      if (searchFilterIds !== null) {
+        const map = Object.fromEntries(users.map(u => [u.user_id, u]));
+        users = searchFilterIds.map(id => map[id]).filter(Boolean);
+      }
+      return users.filter(u => {
+        if (filterWC       && !u.worth_checking)                        return false;
+        if (filterCategory && u.category !== filterCategory)            return false;
+        if (filterTag      && !u.tags.some(t => t === filterTag))       return false;
+        if (filterSearch) {
+          const q        = filterSearch.toLowerCase();
+          const haystack = [
+            u.display_name, u.username, u.category, u.summary,
+            ...u.tags,
+            u.user_metadata?.profession || '',
+            u.user_metadata?.city       || '',
+          ].join(' ').toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderUsers() {
+      const filtered = getFiltered();
+      filterCountEl.textContent = `Showing ${filtered.length} of ${ALL_USERS.length} users`;
+
+      if (filtered.length === 0) {
+        userListEl.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      userListEl.innerHTML = filtered.map(u => {
+        const tagsHtml = u.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('');
+        const wcBadge  = u.worth_checking ? '<span class="card-wc">Worth Checking</span>' : '';
+        const md       = u.user_metadata || {};
+
+        const metaItems = [
+          md.profession        && ['Profession', md.profession],
+          md.age               && ['Age', md.age],
+          md.city              && ['City', md.city],
+          md.country           && ['Country', md.country],
+          md.experience_years  && ['Experience', md.experience_years + ' yrs'],
+          md.languages?.length && ['Languages', md.languages.join(', ')],
+          md.links?.length     && ['Links', md.links.join(', ')],
+          md.contact_info      && ['Contact', md.contact_info],
+        ].filter(Boolean);
+
+        const metaHtml = metaItems.length
+          ? `<div class="detail-grid">${metaItems.map(([l, v]) =>
+              `<div>
+                <div class="detail-label">${esc(l)}</div>
+                <div class="detail-value">${esc(String(v))}</div>
+              </div>`).join('')}</div>`
+          : '';
+
+        const msgsHtml = u.messages.map(m =>
+          `<div class="msg">${esc(truncate(m, 500))}</div>`
+        ).join('');
+
+        return `
+          <div class="user-card" onclick="this.classList.toggle('expanded')">
+            <div class="card-top">
+              <span class="card-name">${esc(u.display_name)}</span>
+              <span class="card-category">${esc(u.category)}</span>
+              ${wcBadge}
+              <span class="card-msg-count">${u.message_count} msg${u.message_count !== 1 ? 's' : ''}</span>
+              <div class="card-tags">${tagsHtml}</div>
+            </div>
+            <div class="card-summary">${esc(u.summary)}</div>
+            <div class="card-details">
+              <div class="card-details-inner">
+                ${metaHtml}
+                <div class="card-reasoning">Reasoning: ${esc(u.reasoning)}</div>
+                <div class="card-messages">
+                  <h4>Messages (up to 5)</h4>
+                  ${msgsHtml}
+                </div>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Chart ─────────────────────────────────────────────────────────
+    function renderChart() {
+      const counts = {};
+      ALL_USERS.forEach(u => { counts[u.category] = (counts[u.category] || 0) + 1; });
+      const labels = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+      const data   = labels.map(l => counts[l]);
+      const colors = labels.map((_, i) => COLORS[i % COLORS.length]);
+      const total  = data.reduce((a, b) => a + b, 0) || 1;
+
+      new Chart(document.getElementById('chart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Users',
+            data,
+            backgroundColor: colors,
+            borderRadius: 6,
+            borderSkipped: false,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.raw} users (${(ctx.raw / total * 100).toFixed(1)}%)`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, font: { size: 11 } },
+              grid: { color: '#f1f5f9' },
+            },
+            y: {
+              ticks: { font: { size: 12 } },
+              grid: { display: false },
+            },
+          },
+        },
+      });
+    }
+
+    // ── Filter events ─────────────────────────────────────────────────
+    searchInput.addEventListener('input', e => { filterSearch = e.target.value; renderUsers(); });
+    categoryFilter.addEventListener('change', e => { filterCategory = e.target.value; renderUsers(); });
+    tagFilter.addEventListener('change', e => { filterTag = e.target.value; renderUsers(); });
+
+    function toggleWC() {
+      filterWC = !filterWC;
+      wcToggle.classList.toggle('active', filterWC);
+      renderUsers();
+    }
+
+    function resetFilters() {
+      filterSearch = ''; filterCategory = ''; filterTag = ''; filterWC = false;
+      searchInput.value = ''; categoryFilter.value = ''; tagFilter.value = '';
+      wcToggle.classList.remove('active');
+      resetSearch();
+      renderUsers();
+    }
+
+    // ── Run pipeline ──────────────────────────────────────────────────
+    function startRun() {
+      document.getElementById('runModal').classList.add('active');
+    }
+    function closeRunModal() {
+      document.getElementById('runModal').classList.remove('active');
+    }
+
+    async function doRun(forcePromptReset) {
+      closeRunModal();
+      const btn = document.getElementById('runBtn');
+      btn.disabled = true;
+      btn.textContent = 'Starting...';
+
+      try {
+        const authResp = await fetch('/api/auth/telegram/status');
+        const authJson = await authResp.json();
+        if (authJson.state !== 'authorized') {
+          openAuthModal();
+          btn.disabled = false;
+          btn.textContent = 'Run categorization';
+          return;
+        }
+      } catch (_) {}
+
+      const url = forcePromptReset ? '/api/run?confirm_prompt_reset=true' : '/api/run';
+      try {
+        const resp = await fetch(url, { method: 'POST' });
+        const json = await resp.json();
+        if (resp.status === 409) {
+          const d = json.detail || json;
+          if (d.code === 'PROMPT_CHANGE_REQUIRES_CONFIRM') {
+            document.getElementById('promptModalBody').textContent =
+              `The prompt has changed. This will re-categorize ${d.affected_users} users and rebuild the search index. Continue?`;
+            _pendingPromptPayload = { force: true };
+            document.getElementById('promptModal').classList.add('active');
+            btn.disabled = false;
+            btn.textContent = 'Run categorization';
+            return;
+          }
+        }
+        if (!resp.ok) {
+          toast('Error: ' + (json.detail || JSON.stringify(json)), 'error');
+          btn.disabled = false;
+          btn.textContent = 'Run categorization';
+          return;
+        }
+        pollStatus();
+      } catch (err) {
+        toast('Network error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Run categorization';
+      }
+    }
+
+    // ── Auth modal ────────────────────────────────────────────────────
+    let _authPollTimer = null;
+
+    function openAuthModal() {
+      document.getElementById('authModal').classList.add('active');
+      document.getElementById('authQrWrap').style.display = 'none';
+      document.getElementById('twoFaWrap').style.display = 'none';
+      document.getElementById('twoFaBtn').style.display = 'none';
+      document.getElementById('authHint').textContent = 'Starting authentication...';
+      _setAuthDot('waiting');
+      fetch('/api/auth/telegram/start', { method: 'POST' });
+      _startAuthPoll();
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.remove('active');
+      if (_authPollTimer) { clearInterval(_authPollTimer); _authPollTimer = null; }
+    }
+
+    function _setAuthDot(state) {
+      const cls = state === 'authorized' ? 'ok' : state === 'error' ? 'error' : 'waiting';
+      document.getElementById('authDot').className = `auth-status-dot ${cls}`;
+    }
+
+    function _startAuthPoll() {
+      if (_authPollTimer) clearInterval(_authPollTimer);
+      _authPollTimer = setInterval(async () => {
+        try {
+          const resp = await fetch('/api/auth/telegram/status');
+          const s    = await resp.json();
+          if (s.state === 'qr_shown' && s.qr_svg) {
+            document.getElementById('authQrWrap').innerHTML = s.qr_svg;
+            document.getElementById('authQrWrap').style.display = 'flex';
+            document.getElementById('authHint').textContent =
+              'Open Telegram → Settings → Devices → Link Desktop Device and scan the QR code.';
+            document.getElementById('twoFaWrap').style.display = 'none';
+            document.getElementById('twoFaBtn').style.display = 'none';
+            _setAuthDot('waiting');
+          } else if (s.state === 'needs_2fa') {
+            document.getElementById('authQrWrap').style.display = 'none';
+            document.getElementById('twoFaWrap').style.display = 'block';
+            document.getElementById('twoFaBtn').style.display = 'inline-flex';
+            document.getElementById('authHint').textContent = 'Two-factor authentication is enabled on your account.';
+            document.getElementById('authTitle').textContent = 'Enter 2FA Password';
+            document.getElementById('twoFaInput').focus();
+            _setAuthDot('waiting');
+          } else if (s.state === 'authorized') {
+            clearInterval(_authPollTimer); _authPollTimer = null;
+            _setAuthDot('ok');
+            document.getElementById('authTitle').textContent = 'Authorized ✓';
+            document.getElementById('authHint').textContent =
+              `Signed in as ${s.authorized_name || 'User'}. Starting run…`;
+            document.getElementById('authQrWrap').style.display = 'none';
+            document.getElementById('twoFaWrap').style.display = 'none';
+            document.getElementById('twoFaBtn').style.display = 'none';
+            setTimeout(() => { closeAuthModal(); doRun(); }, 800);
+          } else if (s.state === 'error') {
+            clearInterval(_authPollTimer); _authPollTimer = null;
+            _setAuthDot('error');
+            document.getElementById('authHint').textContent = 'Error: ' + (s.error || 'unknown error');
+          }
+        } catch (_) {}
+      }, 1500);
+    }
+
+    async function submit2FA() {
+      const pw  = document.getElementById('twoFaInput').value;
+      if (!pw) return;
+      const btn = document.getElementById('twoFaBtn');
+      btn.disabled = true;
+      document.getElementById('authHint').textContent = 'Verifying…';
+      try {
+        await fetch('/api/auth/telegram/2fa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw }),
+        });
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function cancelPromptChange() {
+      document.getElementById('promptModal').classList.remove('active');
+      _pendingPromptPayload = null;
+    }
+
+    // ── Progress polling ──────────────────────────────────────────────
+    const _phaseLabel = {
+      extracting:   'Extracting messages from Telegram...',
+      categorizing: 'Categorizing users...',
+      indexing:     'Building search index...',
+      exporting:    'Writing exports...',
+    };
+
+    function pollStatus() {
+      const wrap  = document.getElementById('progressWrap');
+      const fill  = document.getElementById('progressFill');
+      const label = document.getElementById('progressLabel');
+      const pct   = document.getElementById('progressPct');
+      const btn   = document.getElementById('runBtn');
+
+      wrap.style.display = 'block';
+      if (_pollInterval) clearInterval(_pollInterval);
+
+      _pollInterval = setInterval(async () => {
+        try {
+          const resp = await fetch('/api/status');
+          const s    = await resp.json();
+
+          if (s.state === 'running') {
+            label.textContent = _phaseLabel[s.phase] || 'Running...';
+
+            if (s.phase === 'categorizing' && s.total > 0) {
+              // determinate — show real percentage
+              wrap.classList.remove('progress-indeterminate');
+              const p = Math.round((s.done / s.total) * 100);
+              fill.style.width  = p + '%';
+              pct.textContent   = `${s.done} / ${s.total}${s.failed ? '  (' + s.failed + ' failed)' : ''}`;
+            } else {
+              // indeterminate — pulsing bar for extract / index / export
+              wrap.classList.add('progress-indeterminate');
+              pct.textContent = '';
+            }
+
+          } else if (s.state === 'done') {
+            wrap.classList.remove('progress-indeterminate');
+            fill.style.width  = '100%';
+            label.textContent = 'Done!';
+            pct.textContent   = '';
+            clearInterval(_pollInterval);
+            btn.disabled    = false;
+            btn.textContent = 'Run categorization';
+            setTimeout(() => {
+              wrap.style.display = 'none';
+              window.location.reload();
+            }, 900);
+
+          } else if (s.state === 'error') {
+            wrap.classList.remove('progress-indeterminate');
+            fill.style.width  = '100%';
+            fill.style.background = 'rgba(239,68,68,.8)';
+            label.textContent = 'Error: ' + (s.last_error || 'unknown error');
+            pct.textContent   = '';
+            clearInterval(_pollInterval);
+            btn.disabled    = false;
+            btn.textContent = 'Run categorization';
+
+          } else if (s.state === 'idle') {
+            clearInterval(_pollInterval);
+            wrap.style.display = 'none';
+            btn.disabled    = false;
+            btn.textContent = 'Run categorization';
+          }
+
+        } catch (_) {}
+      }, 1500);
+    }
+
+    // ── Prompt editor ─────────────────────────────────────────────────
+    let _promptData = null;
+
+    function togglePromptEditor() {
+      const panel   = document.getElementById('promptPanel');
+      const visible = panel.style.display === 'block';
+      if (!visible) {
+        loadPrompt();
+        panel.style.display = 'block';
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+
+    async function loadPrompt() {
+      try {
+        const resp = await fetch('/api/prompt');
+        _promptData = await resp.json();
+        renderPromptEditor();
+      } catch (e) { console.error('Failed to load prompt:', e); }
+    }
+
+    function renderPromptEditor() {
+      if (!_promptData) return;
+
+      document.getElementById('catBody').innerHTML =
+        (_promptData.categories || []).map((c, i) => `
+          <tr data-idx="${i}">
+            <td>${i + 1}</td>
+            <td><input type="text" class="cat-name" value="${esc(c.name)}"></td>
+            <td><textarea class="cat-desc" rows="2">${esc(c.description)}</textarea></td>
+            <td><button class="btn-icon" onclick="deleteCategory(${i})" title="Delete">🗑</button></td>
+          </tr>`).join('');
+
+      document.getElementById('rulesList').innerHTML =
+        (_promptData.assignment_rules || []).map((r, i) => `
+          <div class="rule-row" data-idx="${i}">
+            <textarea class="rule-text" rows="2">${esc(r)}</textarea>
+            <button class="btn-icon" onclick="deleteRule(${i})" title="Delete">🗑</button>
+          </div>`).join('');
+
+      document.getElementById('sysPromptArea').value = _promptData.system_prompt || '';
+    }
+
+    function _syncFromDOM() {
+      if (!_promptData) return;
+      _promptData.categories = [...document.querySelectorAll('#catBody tr')].map(row => ({
+        name:        row.querySelector('.cat-name').value,
+        description: row.querySelector('.cat-desc').value,
+      }));
+      _promptData.assignment_rules = [...document.querySelectorAll('.rule-text')].map(t => t.value);
+      const sysArea = document.getElementById('sysPromptArea');
+      if (sysArea) _promptData.system_prompt = sysArea.value;
+    }
+
+    function addCategory() {
+      if (!_promptData) return;
+      _syncFromDOM();
+      _promptData.categories.push({ name: '', description: '' });
+      renderPromptEditor();
+      const rows = document.querySelectorAll('#catBody tr');
+      if (rows.length) rows[rows.length - 1].querySelector('.cat-name').focus();
+    }
+
+    function deleteCategory(idx) {
+      if (!_promptData) return;
+      _syncFromDOM();
+      _promptData.categories.splice(idx, 1);
+      renderPromptEditor();
+    }
+
+    function addRule() {
+      if (!_promptData) return;
+      _syncFromDOM();
+      _promptData.assignment_rules.push('');
+      renderPromptEditor();
+      const textareas = document.querySelectorAll('.rule-text');
+      if (textareas.length) textareas[textareas.length - 1].focus();
+    }
+
+    function deleteRule(idx) {
+      if (!_promptData) return;
+      _syncFromDOM();
+      _promptData.assignment_rules.splice(idx, 1);
+      renderPromptEditor();
+    }
+
+    async function savePrompt() {
+      _syncFromDOM();
+      const payload = {
+        categories:       _promptData.categories,
+        assignment_rules: (_promptData.assignment_rules || []).filter(r => r.trim()),
+        system_prompt:    _promptData.system_prompt || '',
+      };
+      try {
+        const resp = await fetch('/api/prompt', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const json = await resp.json();
+        if (resp.ok) {
+          toast('Prompt saved.', 'success');
+          document.getElementById('promptPanel').style.display = 'none';
+        } else if (resp.status === 409) {
+          document.getElementById('promptModalBody').textContent =
+            `The prompt has changed. This will re-categorize ${json.users_to_reprocess} users and rebuild the search index. Continue?`;
+          _pendingPromptPayload = payload;
+          document.getElementById('promptModal').classList.add('active');
+        } else {
+          toast('Error: ' + (json.detail || JSON.stringify(json)), 'error');
+        }
+      } catch (e) {
+        toast('Network error: ' + e.message, 'error');
+      }
+    }
+
+    async function confirmPromptChange() {
+      document.getElementById('promptModal').classList.remove('active');
+      if (!_pendingPromptPayload) return;
+      if (_pendingPromptPayload.force) {
+        doRun(true);
+      } else {
+        const resp = await fetch('/api/prompt?confirm=true', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(_pendingPromptPayload),
+        });
+        if (resp.ok) {
+          document.getElementById('promptPanel').style.display = 'none';
+          toast('Prompt saved. Re-categorization scheduled.', 'success');
+          pollStatus();
+        } else {
+          const j = await resp.json();
+          toast('Error: ' + (j.detail || JSON.stringify(j)), 'error');
+        }
+      }
+      _pendingPromptPayload = null;
+    }
+
+    // ── Chat / search ─────────────────────────────────────────────────
+    function toggleChat() {
+      document.getElementById('chatPanel').classList.toggle('open');
+    }
+
+    function useChip(el) {
+      document.getElementById('chatInput').value = el.textContent;
+      document.getElementById('chatSuggestions').style.display = 'none';
+      sendSearch();
+    }
+
+    async function sendSearch() {
+      const input   = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('chatSend');
+      const query   = input.value.trim();
+      if (!query) return;
+
+      document.getElementById('chatSuggestions').style.display = 'none';
+      appendChatMsg(query, 'user');
+      input.value      = '';
+      sendBtn.disabled = true;
+      appendChatMsg('Searching…', 'assistant thinking', true);
+
+      try {
+        const resp = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        const json = await resp.json();
+        removeThinking();
+        if (json.reason === 'ok') {
+          const ids = json.matches.map(m => m.user_id);
+          searchFilterIds = ids;
+          appendChatMsg(
+            `Found ${ids.length} match${ids.length !== 1 ? 'es' : ''} — filtering the list below.`,
+            'assistant'
+          );
+          updateSearchBanner(query, ids.length);
+          renderUsers();
+        } else {
+          appendChatMsg('No matching people could be found in the community at the moment.', 'assistant');
+        }
+      } catch (e) {
+        removeThinking();
+        appendChatMsg('Search is temporarily unavailable. Please try again.', 'assistant');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    function appendChatMsg(text, cssClass, isThinking) {
+      const msgs = document.getElementById('chatMessages');
+      const div  = document.createElement('div');
+      div.className = `chat-msg ${cssClass}`;
+      if (isThinking) div.dataset.thinking = '1';
+      div.textContent = text;
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    function removeThinking() {
+      document.querySelector('.chat-msg[data-thinking]')?.remove();
+    }
+
+    function resetSearch() {
+      searchFilterIds = null;
+      searchBanner.style.display = 'none';
+      document.getElementById('chatResetBtn').style.display = 'none';
+      renderUsers();
+    }
+
+    function updateSearchBanner(query, count) {
+      document.getElementById('searchBannerText').textContent =
+        `Showing ${count} result${count !== 1 ? 's' : ''} for: "${query}"`;
+      searchBanner.style.display = 'flex';
+      document.getElementById('chatResetBtn').style.display = 'inline';
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────
+    renderChart();
+    renderUsers();
+  </script>
+</body>
+</html>
